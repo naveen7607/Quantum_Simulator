@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Energy Level Simulator — Particle in a 1D Box</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #030810;
+    --panel: #060f1e;
+    --border: #0a2040;
+    --accent: #00f0ff;
+    --accent2: #7b2fff;
+    --accent3: #ff6b35;
+    --gold: #ffd700;
+    --text: #c8e0f4;
+    --dim: #4a7090;
+    --glow: 0 0 20px rgba(0,240,255,0.3);
+    --glow2: 0 0 20px rgba(123,47,255,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Starfield BG */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(0,240,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 70%, rgba(123,47,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 10%, rgba(0,240,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 50%, rgba(123,47,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 90%, rgba(0,240,255,0.3) 0%, transparent 100%),
+      radial-gradient(circle at 20% 80%, rgba(0,240,255,0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(123,47,255,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 30px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 30px;
+    position: relative;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  }
+
+  .label-tag {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    border: 1px solid var(--accent);
+    padding: 4px 12px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(20px, 4vw, 38px);
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: #fff;
+    text-shadow: 0 0 30px rgba(0,240,255,0.5);
+    line-height: 1.2;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--dim);
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* LAYOUT */
+  .grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* PANELS */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* CONTROLS */
+  .control-group { margin-bottom: 18px; }
+
+  .control-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .control-label span {
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--border);
+    outline: none;
+    border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 12px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn:hover {
+    background: rgba(0,240,255,0.1);
+    box-shadow: var(--glow);
+  }
+  .btn.active {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .btn.btn2 { border-color: var(--accent2); color: var(--accent2); }
+  .btn2:hover { background: rgba(123,47,255,0.1); box-shadow: var(--glow2); }
+
+  /* ENERGY LEVELS display */
+  .energy-levels {
+    margin-top: 16px;
+  }
+  .energy-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(10,32,64,0.6);
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+  .energy-row:hover { background: rgba(0,240,255,0.05); padding-left: 4px; }
+  .energy-row.selected { background: rgba(0,240,255,0.1); padding-left: 4px; }
+
+  .n-badge {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .energy-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .energy-bar { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+  .energy-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    min-width: 70px;
+    text-align: right;
+  }
+
+  /* CANVAS AREA */
+  .viz-area { display: flex; flex-direction: column; gap: 16px; }
+
+  .canvas-wrap {
+    position: relative;
+    background: rgba(3,8,16,0.8);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .canvas-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(6,15,30,0.9);
+  }
+  canvas { display: block; width: 100%; }
+
+  /* INFO BAR */
+  .info-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .info-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .info-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+  }
+
+  .info-card-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .info-card-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .info-card-unit {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+
+  /* FORMULA BOX */
+  .formula-box {
+    background: rgba(0,240,255,0.03);
+    border: 1px solid rgba(0,240,255,0.15);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    text-align: center;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* SUPERPOSITION toggle */
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .toggle {
+    position: relative;
+    width: 40px; height: 20px;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 14px; width: 14px;
+    left: 3px; top: 3px;
+    background: var(--dim);
+    border-radius: 50%;
+    transition: 0.3s;
+  }
+  .toggle input:checked + .toggle-slider { background: rgba(0,240,255,0.3); }
+  .toggle input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .toggle-label { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--dim); }
+
+  /* ANIMATE */
+  @keyframes scanline {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(100vh); }
+  }
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(transparent, rgba(0,240,255,0.05), transparent);
+    animation: scanline 5s linear infinite;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  @keyframes flicker { 0%,100%{opacity:1} 50%{opacity:0.95} }
+  h1 { animation: flicker 4s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<div class="container">
+  <header>
+    <div class="label-tag">LG1 // Quantum Mechanics Lab</div>
+    <h1>Particle in a <span>1D Box</span><br>Energy Level Simulator</h1>
+    <p class="subtitle">Numerical simulation of quantum confinement · Schrödinger equation solutions</p>
+  </header>
+
+  <div class="grid">
+    <!-- CONTROLS PANEL -->
+    <div>
+      <div class="panel">
+        <div class="panel-title">⬡ System Parameters</div>
+
+        <div class="control-group">
+          <div class="control-label">Box Length (L) <span id="L-val">1.00 nm</span></div>
+          <input type="range" id="L-slider" min="0.1" max="5" step="0.05" value="1.0">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">Particle Mass <span id="m-val">1.00 mₑ</span></div>
+          <input type="range" id="m-slider" min="0.1" max="10" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">Quantum Number (n) <span id="n-val">n = 1</span></div>
+          <input type="range" id="n-slider" min="1" max="8" step="1" value="1">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">Visualization Mode</div>
+          <select id="mode-select">
+            <option value="wavefunction">ψ(x) — Wavefunction</option>
+            <option value="probability">|ψ(x)|² — Probability Density</option>
+            <option value="both">Both Overlaid</option>
+          </select>
+        </div>
+
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" id="superposition-toggle">
+            <div class="toggle-slider"></div>
+          </label>
+          <span class="toggle-label">Superposition (n=1,2,3)</span>
+        </div>
+
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" id="animate-toggle" checked>
+            <div class="toggle-slider"></div>
+          </label>
+          <span class="toggle-label">Time Evolution</span>
+        </div>
+
+        <div class="btn-group" style="margin-top:16px">
+          <button class="btn" onclick="selectN(1)">n=1</button>
+          <button class="btn" onclick="selectN(2)">n=2</button>
+          <button class="btn" onclick="selectN(3)">n=3</button>
+          <button class="btn" onclick="selectN(4)">n=4</button>
+        </div>
+      </div>
+
+      <!-- ENERGY LEVELS LIST -->
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title">⬡ Energy Eigenvalues</div>
+        <div class="formula-box">Eₙ = n²π²ℏ² / (2mL²)</div>
+        <div class="energy-levels" id="energy-list"></div>
+      </div>
+    </div>
+
+    <!-- VISUALIZATION -->
+    <div class="viz-area">
+      <div class="info-bar" id="info-bar">
+        <div class="info-card">
+          <div class="info-card-label">Quantum Number</div>
+          <div class="info-card-val" id="info-n">1</div>
+          <div class="info-card-unit">n (principal)</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Energy Eₙ</div>
+          <div class="info-card-val" id="info-E">—</div>
+          <div class="info-card-unit">eV</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">De Broglie λ</div>
+          <div class="info-card-val" id="info-lambda">—</div>
+          <div class="info-card-unit">nm</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Nodes</div>
+          <div class="info-card-val" id="info-nodes">0</div>
+          <div class="info-card-unit">interior zeros</div>
+        </div>
+      </div>
+
+      <!-- WAVEFUNCTION CANVAS -->
+      <div class="canvas-wrap">
+        <div class="canvas-label">WAVEFUNCTION / PROBABILITY DENSITY ψ(x)</div>
+        <canvas id="waveCanvas" height="280"></canvas>
+      </div>
+
+      <!-- ENERGY DIAGRAM CANVAS -->
+      <div class="canvas-wrap">
+        <div class="canvas-label">ENERGY LEVEL DIAGRAM — INFINITE SQUARE WELL</div>
+        <canvas id="energyCanvas" height="220"></canvas>
+      </div>
+
+      <!-- POSITION EXPECTATION -->
+      <div class="canvas-wrap">
+        <div class="canvas-label">CUMULATIVE PROBABILITY — ∫|ψ|² dx (Numerical Integration)</div>
+        <canvas id="cumCanvas" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === PHYSICAL CONSTANTS ===
+const hbar = 1.0545718e-34;  // J·s
+const me   = 9.10938e-31;    // kg
+const eV   = 1.60218e-19;    // J
+const nm   = 1e-9;           // m
+
+// === STATE ===
+let state = {
+  L: 1.0,   // nm
+  m: 1.0,   // mₑ
+  n: 1,
+  mode: 'wavefunction',
+  superposition: false,
+  animate: true,
+  t: 0,
+};
+
+// === PHYSICS ===
+function energy(n, L, m) {
+  // E_n = n²π²ℏ² / (2mL²) in Joules → convert to eV
+  const L_m = L * nm;
+  const m_kg = m * me;
+  const E_J = (n*n * Math.PI*Math.PI * hbar*hbar) / (2 * m_kg * L_m * L_m);
+  return E_J / eV;
+}
+
+function wavefunction(x, n, L) {
+  // ψ_n(x) = sqrt(2/L) sin(nπx/L), x in [0,L]
+  return Math.sqrt(2 / L) * Math.sin(n * Math.PI * x / L);
+}
+
+function wavefunctionTime(x, n, L, m, t) {
+  const L_m = L * nm;
+  const m_kg = m * me;
+  const E_J = (n*n * Math.PI*Math.PI * hbar*hbar) / (2 * m_kg * L_m * L_m);
+  const omega = E_J / hbar;
+  const psi_x = wavefunction(x, n, L);
+  return {
+    re: psi_x * Math.cos(omega * t),
+    im: psi_x * Math.sin(omega * t),
+  };
+}
+
+function superpositionState(x, ns, L, m, t) {
+  const L_m = L * nm;
+  const m_kg = m * me;
+  let re = 0, im = 0;
+  const c = 1 / Math.sqrt(ns.length);
+  for (const n of ns) {
+    const E_J = (n*n * Math.PI*Math.PI * hbar*hbar) / (2 * m_kg * L_m * L_m);
+    const omega = E_J / hbar;
+    const psi = wavefunction(x, n, L);
+    re += c * psi * Math.cos(omega * t);
+    im += c * psi * Math.sin(omega * t);
+  }
+  return { re, im };
+}
+
+// === COLOR PALETTES ===
+const colors = ['#00f0ff','#7b2fff','#ff6b35','#ffd700','#00ff88','#ff2288','#44aaff','#ff44aa'];
+
+// === CANVAS RENDERING ===
+function setupCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  // height stays as set via attribute
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, 1);
+  return ctx;
+}
+
+function drawGrid(ctx, W, H, pad) {
+  ctx.strokeStyle = 'rgba(10,32,64,0.8)';
+  ctx.lineWidth = 1;
+  const cols = 10, rows = 6;
+  for (let i = 0; i <= cols; i++) {
+    const x = pad.l + (W - pad.l - pad.r) * i / cols;
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b);
+    ctx.stroke();
+  }
+  for (let j = 0; j <= rows; j++) {
+    const y = pad.t + (H - pad.t - pad.b) * j / rows;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y);
+    ctx.stroke();
+  }
+}
+
+function drawAxes(ctx, W, H, pad, xLabel, yLabel) {
+  ctx.strokeStyle = 'rgba(74,112,144,0.6)';
+  ctx.lineWidth = 1.5;
+  // x-axis at y=0 line
+  const midY = pad.t + (H - pad.t - pad.b) / 2;
+  ctx.beginPath(); ctx.moveTo(pad.l, midY); ctx.lineTo(W - pad.r, midY); ctx.stroke();
+  // y-axis
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.stroke();
+
+  ctx.fillStyle = 'rgba(74,112,144,0.8)';
+  ctx.font = '11px Share Tech Mono, monospace';
+  ctx.fillText(xLabel, W - pad.r - 30, midY + 16);
+  ctx.save(); ctx.translate(pad.l - 12, pad.t + 20); ctx.rotate(-Math.PI/2);
+  ctx.fillText(yLabel, 0, 0); ctx.restore();
+}
+
+let animId = null;
+let t = 0;
+
+function drawWaveCanvas() {
+  const canvas = document.getElementById('waveCanvas');
+  const W = canvas.offsetWidth;
+  canvas.style.height = '280px';
+  const H = 280;
+  canvas.width = W * (window.devicePixelRatio||1);
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
+  ctx.scale(dpr,1);
+
+  ctx.fillStyle = 'rgba(3,8,16,0.95)';
+  ctx.fillRect(0,0,W,H);
+  const pad = {l:50,r:20,t:20,b:30};
+  drawGrid(ctx, W, H, pad);
+  drawAxes(ctx, W, H, pad, 'x/L', 'ψ(x)');
+
+  const innerW = W - pad.l - pad.r;
+  const innerH = H - pad.t - pad.b;
+  const midY = pad.t + innerH / 2;
+  const pts = 400;
+  const {L, m, n, mode, superposition} = state;
+
+  const getVal = (xNorm) => {
+    if (superposition) {
+      const {re, im} = superpositionState(xNorm * L, [1,2,3], L, m, t);
+      return { psi: re, prob: re*re + im*im };
+    } else {
+      const psi = wavefunction(xNorm * L, n, L);
+      return { psi, prob: psi * psi };
+    }
+  };
+
+  // compute amplitude scale
+  let maxPsi = 0, maxProb = 0;
+  for (let i = 0; i <= pts; i++) {
+    const x = i / pts;
+    const {psi, prob} = getVal(x);
+    maxPsi = Math.max(maxPsi, Math.abs(psi));
+    maxProb = Math.max(maxProb, prob);
+  }
+  const scaleW = (innerH / 2) / (maxPsi || 1) * 0.85;
+  const scaleP = innerH / (maxProb || 1) * 0.85;
+
+  // WALLS
+  ctx.strokeStyle = 'rgba(255,107,53,0.7)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W-pad.r, pad.t); ctx.lineTo(W-pad.r, H-pad.b); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // DRAW WAVEFUNCTION
+  const drawCurve = (getData, color, alpha, dashes) => {
+    if (dashes) ctx.setLineDash(dashes);
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = alpha;
+    for (let i = 0; i <= pts; i++) {
+      const xNorm = i / pts;
+      const xPx = pad.l + xNorm * innerW;
+      const val = getData(xNorm);
+      const yPx = midY - val;
+      if (i === 0) ctx.moveTo(xPx, yPx); else ctx.lineTo(xPx, yPx);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+  };
+
+  if (mode === 'wavefunction' || mode === 'both') {
+    // fill area under wavefunction
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pad.l, midY);
+    for (let i = 0; i <= pts; i++) {
+      const xNorm = i / pts;
+      const xPx = pad.l + xNorm * innerW;
+      const {psi} = getVal(xNorm);
+      ctx.lineTo(xPx, midY - psi * scaleW);
+    }
+    ctx.lineTo(W-pad.r, midY);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, pad.t, 0, H-pad.b);
+    grad.addColorStop(0, 'rgba(0,240,255,0.15)');
+    grad.addColorStop(0.5, 'rgba(0,240,255,0.05)');
+    grad.addColorStop(1, 'rgba(123,47,255,0.1)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    drawCurve(x => getVal(x).psi * scaleW, '#00f0ff', 0.9, []);
+  }
+
+  if (mode === 'probability' || mode === 'both') {
+    // probability density from bottom
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pad.l, H-pad.b);
+    for (let i = 0; i <= pts; i++) {
+      const xNorm = i / pts;
+      const {prob} = getVal(xNorm);
+      ctx.lineTo(pad.l + xNorm * innerW, H - pad.b - prob * scaleP * 0.9);
+    }
+    ctx.lineTo(W-pad.r, H-pad.b);
+    ctx.closePath();
+    const grad2 = ctx.createLinearGradient(0, pad.t, 0, H-pad.b);
+    grad2.addColorStop(0, 'rgba(123,47,255,0.4)');
+    grad2.addColorStop(1, 'rgba(123,47,255,0.05)');
+    ctx.fillStyle = grad2;
+    ctx.fill();
+    ctx.restore();
+    drawCurve(x => -(getVal(x).prob * scaleP * 0.9 - innerH/2 + (mode==='both'? -innerH/4:0)), '#7b2fff', 0.9, mode==='both'?[5,3]:[]);
+  }
+
+  // NODES indicator dots
+  if (!superposition && (mode==='wavefunction'||mode==='both')) {
+    ctx.fillStyle = '#ffd700';
+    for (let k = 1; k < n; k++) {
+      const xNode = k / n;
+      const xPx = pad.l + xNode * innerW;
+      ctx.beginPath(); ctx.arc(xPx, midY, 4, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // LEGEND
+  ctx.font = '11px Share Tech Mono, monospace';
+  if (mode !== 'probability') {
+    ctx.fillStyle = '#00f0ff'; ctx.fillRect(W-130, 8, 14, 3);
+    ctx.fillStyle = 'rgba(74,112,144,0.9)'; ctx.fillText('ψ(x)', W-112, 14);
+  }
+  if (mode !== 'wavefunction') {
+    ctx.fillStyle = '#7b2fff'; ctx.fillRect(W-130, 22, 14, 3);
+    ctx.fillStyle = 'rgba(74,112,144,0.9)'; ctx.fillText('|ψ|²', W-112, 28);
+  }
+
+  // x-axis labels
+  ctx.fillStyle = 'rgba(74,112,144,0.7)';
+  ctx.font = '10px Share Tech Mono, monospace';
+  ctx.fillText('0', pad.l-4, H-pad.b+14);
+  ctx.fillText('L', W-pad.r-2, H-pad.b+14);
+  ctx.fillText('L/2', pad.l + innerW/2 - 8, H-pad.b+14);
+}
+
+function drawEnergyDiagram() {
+  const canvas = document.getElementById('energyCanvas');
+  const W = canvas.offsetWidth;
+  canvas.width = W * (window.devicePixelRatio||1);
+  canvas.height = 220;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio||1, 1);
+  const H = 220;
+
+  ctx.fillStyle = 'rgba(3,8,16,0.95)';
+  ctx.fillRect(0, 0, W, H);
+
+  const {L, m, n} = state;
+  const pad = {l:65, r:20, t:15, b:30};
+  const maxN = 8;
+  const energies = Array.from({length:maxN}, (_,i) => energy(i+1, L, m));
+  const E1 = energies[0];
+  const Emax = energies[maxN-1];
+
+  const toY = E => pad.t + (H - pad.t - pad.b) * (1 - (E - 0) / (Emax * 1.05));
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(10,32,64,0.6)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = pad.t + (H - pad.t - pad.b) * i / 5;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y); ctx.stroke();
+  }
+
+  // Energy levels
+  const innerW = W - pad.l - pad.r;
+  for (let i = 0; i < maxN; i++) {
+    const ni = i + 1;
+    const E = energies[i];
+    const y = toY(E);
+    const isSelected = ni === n;
+    const col = colors[i];
+
+    // Level line
+    ctx.strokeStyle = isSelected ? col : col + '66';
+    ctx.lineWidth = isSelected ? 2.5 : 1.2;
+    if (isSelected) ctx.shadowBlur = 8, ctx.shadowColor = col;
+    ctx.beginPath();
+    ctx.moveTo(pad.l + innerW * 0.1, y);
+    ctx.lineTo(pad.l + innerW * 0.9, y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // n label
+    ctx.fillStyle = isSelected ? col : col + 'aa';
+    ctx.font = isSelected ? 'bold 12px Orbitron, sans-serif' : '10px Share Tech Mono, monospace';
+    ctx.fillText(`n=${ni}`, pad.l - 60, y + 4);
+
+    // E value
+    ctx.font = '10px Share Tech Mono, monospace';
+    ctx.fillStyle = isSelected ? '#ffffff' : 'rgba(74,112,144,0.7)';
+    ctx.fillText(`${E.toFixed(2)} eV`, W - pad.r - 60, y - 3);
+
+    // small waveform sketch on the level
+    if (isSelected) {
+      const barW = innerW * 0.8;
+      const barX = pad.l + innerW * 0.1;
+      const amp = 6;
+      ctx.strokeStyle = col + 'aa';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let px = 0; px <= 60; px++) {
+        const xn = px / 60;
+        const wy = y - amp * Math.sin(ni * Math.PI * xn);
+        if (px === 0) ctx.moveTo(barX + xn * barW * 0.4, wy);
+        else ctx.lineTo(barX + xn * barW * 0.4, wy);
+      }
+      ctx.stroke();
+    }
+  }
+
+  // Axis
+  ctx.strokeStyle = 'rgba(74,112,144,0.5)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.stroke();
+
+  ctx.fillStyle = 'rgba(74,112,144,0.7)';
+  ctx.font = '10px Share Tech Mono, monospace';
+  ctx.fillText('E (eV)', 4, pad.t + 10);
+}
+
+function drawCumulative() {
+  const canvas = document.getElementById('cumCanvas');
+  const W = canvas.offsetWidth;
+  canvas.width = W * (window.devicePixelRatio||1);
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio||1, 1);
+  const H = 160;
+
+  ctx.fillStyle = 'rgba(3,8,16,0.95)';
+  ctx.fillRect(0,0,W,H);
+
+  const {L, m, n, superposition} = state;
+  const pad = {l:50, r:20, t:15, b:30};
+  const innerW = W - pad.l - pad.r;
+  const innerH = H - pad.t - pad.b;
+  const pts = 300;
+
+  // Compute cumulative integral using Simpson's rule numerically
+  const dx = L / pts;
+  const cumProb = [0];
+  for (let i = 1; i <= pts; i++) {
+    const x = (i - 0.5) * dx;
+    let prob;
+    if (superposition) {
+      const {re, im} = superpositionState(x, [1,2,3], L, m, t);
+      prob = re*re + im*im;
+    } else {
+      const psi = wavefunction(x, n, L);
+      prob = psi * psi;
+    }
+    cumProb.push(cumProb[cumProb.length-1] + prob * dx);
+  }
+  const total = cumProb[cumProb.length - 1];
+
+  drawGrid(ctx, W, H, pad);
+
+  // Fill area
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t + innerH);
+  for (let i = 0; i <= pts; i++) {
+    const xPx = pad.l + (i / pts) * innerW;
+    const yPx = pad.t + innerH * (1 - cumProb[i] / (total || 1));
+    if (i===0) ctx.moveTo(xPx, yPx); else ctx.lineTo(xPx, yPx);
+  }
+  ctx.lineTo(pad.l + innerW, pad.t + innerH);
+  ctx.closePath();
+  const grd = ctx.createLinearGradient(0, pad.t, 0, H-pad.b);
+  grd.addColorStop(0, 'rgba(0,255,136,0.3)');
+  grd.addColorStop(1, 'rgba(0,255,136,0.03)');
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i <= pts; i++) {
+    const xPx = pad.l + (i/pts)*innerW;
+    const yPx = pad.t + innerH*(1 - cumProb[i]/(total||1));
+    if (i===0) ctx.moveTo(xPx,yPx); else ctx.lineTo(xPx,yPx);
+  }
+  ctx.stroke();
+
+  // 50% line
+  const y50 = pad.t + innerH * 0.5;
+  ctx.strokeStyle = 'rgba(255,215,0,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(pad.l, y50); ctx.lineTo(W-pad.r, y50); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,215,0,0.6)'; ctx.font='9px Share Tech Mono,monospace';
+  ctx.fillText('50%', W-pad.r-24, y50-3);
+
+  // Axes
+  ctx.strokeStyle = 'rgba(74,112,144,0.5)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad.l, H-pad.b); ctx.lineTo(W-pad.r, H-pad.b); ctx.stroke();
+
+  ctx.fillStyle='rgba(74,112,144,0.7)'; ctx.font='10px Share Tech Mono,monospace';
+  ctx.fillText('∫|ψ|²', 4, pad.t+10);
+  ctx.fillText('0', pad.l-10, H-pad.b+14);
+  ctx.fillText('1', pad.l-10, pad.t+4);
+  ctx.fillText('x→L', W-pad.r-25, H-pad.b+14);
+}
+
+function updateInfo() {
+  const {L, m, n, superposition} = state;
+  const E = energy(n, L, m);
+  const lambda = (2 * L) / n;  // de Broglie wavelength = 2L/n
+  const nodes = n - 1;
+
+  document.getElementById('info-n').textContent = superposition ? '1,2,3' : n;
+  document.getElementById('info-E').textContent = E.toFixed(4);
+  document.getElementById('info-lambda').textContent = lambda.toFixed(3);
+  document.getElementById('info-nodes').textContent = superposition ? '—' : nodes;
+}
+
+function updateEnergyList() {
+  const {L, m, n} = state;
+  const list = document.getElementById('energy-list');
+  list.innerHTML = '';
+  const maxN = 8;
+  const energies = Array.from({length:maxN}, (_,i) => energy(i+1,L,m));
+  const Emax = energies[maxN-1];
+
+  energies.forEach((E,i) => {
+    const ni = i+1;
+    const row = document.createElement('div');
+    row.className = 'energy-row' + (ni===n ? ' selected' : '');
+    row.onclick = () => { state.n = ni; syncSlider(); renderAll(); };
+
+    const badge = document.createElement('div');
+    badge.className = 'n-badge';
+    badge.style.borderColor = colors[i];
+    badge.style.color = colors[i];
+    badge.textContent = ni;
+
+    const barWrap = document.createElement('div');
+    barWrap.className = 'energy-bar-wrap';
+    const bar = document.createElement('div');
+    bar.className = 'energy-bar';
+    bar.style.width = (E / Emax * 100) + '%';
+    bar.style.background = `linear-gradient(90deg, ${colors[i]}99, ${colors[i]})`;
+    barWrap.appendChild(bar);
+
+    const val = document.createElement('div');
+    val.className = 'energy-val';
+    val.textContent = E.toFixed(3) + ' eV';
+
+    row.appendChild(badge); row.appendChild(barWrap); row.appendChild(val);
+    list.appendChild(row);
+  });
+}
+
+function renderAll() {
+  updateInfo();
+  updateEnergyList();
+  drawWaveCanvas();
+  drawEnergyDiagram();
+  drawCumulative();
+}
+
+function syncSlider() {
+  document.getElementById('n-slider').value = state.n;
+  document.getElementById('n-val').textContent = `n = ${state.n}`;
+}
+
+// === CONTROLS ===
+document.getElementById('L-slider').addEventListener('input', e => {
+  state.L = parseFloat(e.target.value);
+  document.getElementById('L-val').textContent = state.L.toFixed(2) + ' nm';
+  renderAll();
+});
+
+document.getElementById('m-slider').addEventListener('input', e => {
+  state.m = parseFloat(e.target.value);
+  document.getElementById('m-val').textContent = state.m.toFixed(2) + ' mₑ';
+  renderAll();
+});
+
+document.getElementById('n-slider').addEventListener('input', e => {
+  state.n = parseInt(e.target.value);
+  document.getElementById('n-val').textContent = `n = ${state.n}`;
+  renderAll();
+});
+
+document.getElementById('mode-select').addEventListener('change', e => {
+  state.mode = e.target.value; renderAll();
+});
+
+document.getElementById('superposition-toggle').addEventListener('change', e => {
+  state.superposition = e.target.checked; renderAll();
+});
+
+document.getElementById('animate-toggle').addEventListener('change', e => {
+  state.animate = e.target.checked;
+  if (!state.animate && animId) { cancelAnimationFrame(animId); animId = null; }
+  else if (state.animate) loop();
+});
+
+function selectN(n) { state.n = n; syncSlider(); renderAll(); }
+
+// === ANIMATION LOOP ===
+let last = 0;
+function loop(ts=0) {
+  if (!state.animate) return;
+  const dt = Math.min((ts - last) / 1000, 0.05);
+  last = ts;
+  t += dt * 0.3e-15; // scaled time (not real femtoseconds, just oscillation speed)
+  t = t % (2 * Math.PI * 1e15) / 1e15; // keep small for numerical stability
+
+  // Only redraw if superposition or time-evolved wavefunction is on
+  if (state.superposition || state.animate) {
+    drawWaveCanvas();
+    drawCumulative();
+  }
+  animId = requestAnimationFrame(loop);
+}
+
+// === RESIZE ===
+window.addEventListener('resize', () => {
+  clearTimeout(window._rt);
+  window._rt = setTimeout(renderAll, 100);
+});
+
+// === INIT ===
+renderAll();
+loop();
+</script>
+</body>
+</html>
